@@ -1,0 +1,30 @@
+# whisper-unified Configuration
+# Copy this file to config.yaml and adjust values
+
+# Logging
+logging:
+  level: INFO
+  # file: logs/app.log
+
+# Application settings
+app:
+  host: "0.0.0.0"
+  port: 9002
+
+# Whisper STT model
+whisper:
+  model_size: "medium"
+  device: "cuda"
+  compute_type: "float16"
+  # language: null  # auto-detect
+
+# Speaker diarization
+diarization:
+  enabled: true
+  # hf_token: ""  # HuggingFace token for pyannote models
+
+# Redis cache
+redis:
+  host: "localhost"
+  port: 6380
+  cache_ttl: 86400  # 24 hours

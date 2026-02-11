@@ -40,7 +40,7 @@ flowchart TD
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/)
 - HuggingFace token (for PyAnnote diarization models)
 
-### Run with Docker
+### Run with Docker (pull from GHCR)
 
 ```bash
 cp .env.example .env
@@ -49,6 +49,15 @@ cp .env.example .env
 docker compose up -d
 curl http://localhost:9002/health
 ```
+
+### Run with Docker (local build)
+
+```bash
+docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up --build -d
+```
+
+This uses the dev overlay which builds from local `Dockerfile` instead of pulling from GHCR,
+mounts `src/` for live code changes, and sets `LOG_LEVEL=DEBUG`.
 
 ## Development Setup
 

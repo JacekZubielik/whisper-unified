@@ -77,14 +77,3 @@ jobs:
           docker run --rm whisper-unified:pr-test \
             python3 -c "from src.whisper_unified import __version__; print(f'OK: v{__version__}')"
 
-  label-size:
-    if: github.event_name == 'pull_request'
-    uses: ./.github/workflows/label-size.yml
-
-  labeler:
-    if: github.event_name == 'pull_request'
-    uses: ./.github/workflows/labeler.yml
-
-  label-sync:
-    if: github.event_name == 'pull_request'
-    uses: ./.github/workflows/label-sync.yml
