@@ -31,11 +31,13 @@ class TestTranscribeInternal:
         audio_file = tmp_path / "test.wav"
         audio_file.write_bytes(b"\x00" * 100)
 
-        pipeline.orchestrator.call_whisper_api = AsyncMock(return_value={
-            "text": "Hello world",
-            "language": "en",
-            "segments": [{"start": 0, "end": 5, "text": "Hello world"}],
-        })
+        pipeline.orchestrator.call_whisper_api = AsyncMock(
+            return_value={
+                "text": "Hello world",
+                "language": "en",
+                "segments": [{"start": 0, "end": 5, "text": "Hello world"}],
+            }
+        )
 
         result = await pipeline._transcribe(str(audio_file), "auto")
 
@@ -121,9 +123,13 @@ class TestTranslateAudio:
         audio_file = tmp_path / "test.wav"
         audio_file.write_bytes(b"\x00" * 100)
 
-        pipeline.orchestrator.call_whisper_api = AsyncMock(return_value={
-            "text": "", "language": "en", "segments": [],
-        })
+        pipeline.orchestrator.call_whisper_api = AsyncMock(
+            return_value={
+                "text": "",
+                "language": "en",
+                "segments": [],
+            }
+        )
 
         result = await pipeline.translate_audio(str(audio_file))
         assert result.status == JobStatus.failed

@@ -10,9 +10,7 @@ class TestHealthWithPipeline:
         """Health endpoint shows ollama and tts status when pipeline enabled."""
         # Mock external service checks to avoid real HTTP calls
         pipeline = client_with_pipeline.app.state.pipeline_service
-        pipeline.check_external_services = AsyncMock(
-            return_value={"ollama": True, "tts": False}
-        )
+        pipeline.check_external_services = AsyncMock(return_value={"ollama": True, "tts": False})
 
         response = client_with_pipeline.get("/health")
         assert response.status_code == 200
@@ -45,14 +43,16 @@ class TestTranslateAudioEndpoint:
     def test_returns_job_result(self, client_with_pipeline, sample_wav_bytes):
         """POST /v1/audio/translate returns JobResult."""
         pipeline = client_with_pipeline.app.state.pipeline_service
-        pipeline.translate_audio = AsyncMock(return_value=JobResult(
-            job_id="test123",
-            status=JobStatus.completed,
-            message="Audio translation completed",
-            output_file="/workspace/test_pl.wav",
-            transcript="Hello world",
-            translated_text="Cześć świecie",
-        ))
+        pipeline.translate_audio = AsyncMock(
+            return_value=JobResult(
+                job_id="test123",
+                status=JobStatus.completed,
+                message="Audio translation completed",
+                output_file="/workspace/test_pl.wav",
+                transcript="Hello world",
+                translated_text="Cześć świecie",
+            )
+        )
 
         response = client_with_pipeline.post(
             "/v1/audio/translate",
@@ -70,13 +70,15 @@ class TestSubtitlesEndpoint:
     def test_returns_job_result(self, client_with_pipeline, sample_wav_bytes):
         """POST /v1/subtitles/generate returns JobResult."""
         pipeline = client_with_pipeline.app.state.pipeline_service
-        pipeline.generate_subtitles = AsyncMock(return_value=JobResult(
-            job_id="sub123",
-            status=JobStatus.completed,
-            message="Subtitles generated",
-            output_file="/workspace/test.srt",
-            transcript="Hello world",
-        ))
+        pipeline.generate_subtitles = AsyncMock(
+            return_value=JobResult(
+                job_id="sub123",
+                status=JobStatus.completed,
+                message="Subtitles generated",
+                output_file="/workspace/test.srt",
+                transcript="Hello world",
+            )
+        )
 
         response = client_with_pipeline.post(
             "/v1/subtitles/generate",
@@ -109,12 +111,14 @@ class TestVoiceLearnEndpoint:
     def test_returns_job_result(self, client_with_pipeline, sample_wav_bytes):
         """POST /v1/voice/learn returns JobResult."""
         pipeline = client_with_pipeline.app.state.pipeline_service
-        pipeline.learn_voice = AsyncMock(return_value=JobResult(
-            job_id="learn123",
-            status=JobStatus.completed,
-            message="Voice sample extracted",
-            output_file="/workspace/samples/test_voice_sample.wav",
-        ))
+        pipeline.learn_voice = AsyncMock(
+            return_value=JobResult(
+                job_id="learn123",
+                status=JobStatus.completed,
+                message="Voice sample extracted",
+                output_file="/workspace/samples/test_voice_sample.wav",
+            )
+        )
 
         response = client_with_pipeline.post(
             "/v1/voice/learn",

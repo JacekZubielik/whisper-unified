@@ -60,7 +60,11 @@ def create_pipeline_router() -> APIRouter:
         tmp = _save_upload(file)
         try:
             return await pipeline.translate_video(
-                tmp, source_lang, target_lang, tts_voice, keep_original_audio,
+                tmp,
+                source_lang,
+                target_lang,
+                tts_voice,
+                keep_original_audio,
             )
         except Exception as e:
             logger.error("Video translation failed", error=str(e))

@@ -123,8 +123,17 @@ class VoicePipelineService:
         """Extract audio track from video file (16kHz mono PCM)."""
         subprocess.run(
             [
-                "ffmpeg", "-y", "-i", video_path,
-                "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
+                "ffmpeg",
+                "-y",
+                "-i",
+                video_path,
+                "-vn",
+                "-acodec",
+                "pcm_s16le",
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
                 output_path,
             ],
             check=True,
@@ -139,11 +148,21 @@ class VoicePipelineService:
         if keep_original:
             subprocess.run(
                 [
-                    "ffmpeg", "-y", "-i", video_path, "-i", audio_path,
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    video_path,
+                    "-i",
+                    audio_path,
                     "-filter_complex",
                     "[0:a]volume=0.15[orig];[1:a]volume=1.0[new];"
                     "[orig][new]amix=inputs=2:duration=longest[out]",
-                    "-map", "0:v", "-map", "[out]", "-c:v", "copy",
+                    "-map",
+                    "0:v",
+                    "-map",
+                    "[out]",
+                    "-c:v",
+                    "copy",
                     output_path,
                 ],
                 check=True,
@@ -152,8 +171,19 @@ class VoicePipelineService:
         else:
             subprocess.run(
                 [
-                    "ffmpeg", "-y", "-i", video_path, "-i", audio_path,
-                    "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-shortest",
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    video_path,
+                    "-i",
+                    audio_path,
+                    "-map",
+                    "0:v",
+                    "-map",
+                    "1:a",
+                    "-c:v",
+                    "copy",
+                    "-shortest",
                     output_path,
                 ],
                 check=True,
@@ -180,8 +210,10 @@ class VoicePipelineService:
 
             if not transcript.strip():
                 return JobResult(
-                    job_id=job_id, status=JobStatus.failed,
-                    message="Transcription returned empty text", transcript="",
+                    job_id=job_id,
+                    status=JobStatus.failed,
+                    message="Transcription returned empty text",
+                    transcript="",
                 )
 
             translated = await self.translate_text(transcript, detected_lang, target_lang)
@@ -191,9 +223,12 @@ class VoicePipelineService:
             await self.synthesize_speech(translated, voice=tts_voice, output_path=output_path)
 
             return JobResult(
-                job_id=job_id, status=JobStatus.completed,
+                job_id=job_id,
+                status=JobStatus.completed,
                 message="Audio translation completed",
-                output_file=output_path, transcript=transcript, translated_text=translated,
+                output_file=output_path,
+                transcript=transcript,
+                translated_text=translated,
             )
 
         except Exception as e:
@@ -222,7 +257,8 @@ class VoicePipelineService:
 
             if not transcript.strip():
                 return JobResult(
-                    job_id=job_id, status=JobStatus.failed,
+                    job_id=job_id,
+                    status=JobStatus.failed,
                     message="Transcription returned empty text",
                 )
 
@@ -238,9 +274,12 @@ class VoicePipelineService:
             )
 
             return JobResult(
-                job_id=job_id, status=JobStatus.completed,
+                job_id=job_id,
+                status=JobStatus.completed,
                 message="Video translation completed",
-                output_file=output_path, transcript=transcript, translated_text=translated,
+                output_file=output_path,
+                transcript=transcript,
+                translated_text=translated,
             )
 
         except Exception as e:
@@ -290,9 +329,11 @@ class VoicePipelineService:
             transcript = " ".join(seg.get("text", "") for seg in segments)
 
             return JobResult(
-                job_id=job_id, status=JobStatus.completed,
+                job_id=job_id,
+                status=JobStatus.completed,
                 message="Subtitles generated",
-                output_file=output_path, transcript=transcript,
+                output_file=output_path,
+                transcript=transcript,
             )
 
         except Exception as e:
@@ -322,7 +363,8 @@ class VoicePipelineService:
             subprocess.run(cmd, check=True, capture_output=True)
 
             return JobResult(
-                job_id=job_id, status=JobStatus.completed,
+                job_id=job_id,
+                status=JobStatus.completed,
                 message=f"Voice sample extracted to {output_path}",
                 output_file=output_path,
             )
