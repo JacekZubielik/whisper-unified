@@ -26,6 +26,7 @@ services:
       - .env
     volumes:
       - ./models:/root/.cache/huggingface
+      - ./workspace:/workspace
       - /dev/shm:/dev/shm
     shm_size: "2gb"
     deploy:

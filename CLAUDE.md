@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-whisper-unified — Unified STT (Speech-to-Text) service combining embedded faster-whisper transcription, PyAnnote speaker diarization, and Redis caching into a single GPU-accelerated container.
+whisper-unified — Unified STT (Speech-to-Text) service combining embedded faster-whisper transcription, PyAnnote speaker diarization, Redis caching, and a Voice Pipeline (audio/video translation, subtitles, TTS) into a single GPU-accelerated container.
 
 **Core Technologies:**
 - Python 3.10 (pinned — NVIDIA CUDA 12.4.1 + Ubuntu 22.04)
@@ -65,16 +65,20 @@ flowchart TD
     Client["Client (Claude CLI / MCP / curl)"] --> API["FastAPI :9002"]
 
     subgraph Container["whisper-unified container"]
-        API --> Routes["api/routes.py<br/>12 REST endpoints"]
+        API --> Routes["api/routes.py<br/>12 STT endpoints"]
+        API --> PRoutes["api/pipeline_routes.py<br/>5 pipeline endpoints"]
         Routes --> Orch["services/orchestrator.py<br/>AudioOrchestrator"]
+        PRoutes --> Pipeline["services/pipeline.py<br/>VoicePipelineService"]
+        Pipeline --> Orch
         Orch --> Whisper["services/whisper.py<br/>EmbeddedWhisperService"]
         Orch --> Diarize["services/diarization.py<br/>IntegratedDiarizationService"]
         Orch --> Cache["Redis Cache<br/>async, configurable TTL"]
         Config["config.py<br/>pydantic-settings"] -.-> Orch
-        Config -.-> Whisper
-        Config -.-> Diarize
+        Config -.-> Pipeline
     end
 
+    Pipeline -->|httpx| Ollama["Ollama :11434<br/>Translation LLM"]
+    Pipeline -->|httpx| TTS["OpenedAI Speech :8000<br/>TTS Engine"]
     Whisper --> GPU["NVIDIA GPU<br/>CUDA 12.4.1"]
     Diarize --> GPU
     Cache --> Redis["Redis :6380<br/>redis:7-alpine"]
@@ -88,8 +92,11 @@ flowchart TD
 | `src/whisper_unified/services/whisper.py` | `EmbeddedWhisperService` — faster-whisper model loading and transcription |
 | `src/whisper_unified/services/diarization.py` | `IntegratedDiarizationService` — PyAnnote speaker diarization pipeline |
 | `src/whisper_unified/services/orchestrator.py` | `AudioOrchestrator` — coordinates STT, diarization, cache, uploads |
+| `src/whisper_unified/models/pipeline.py` | Pydantic models: `JobStatus`, `JobResult`, `SynthesizeRequest` |
+| `src/whisper_unified/services/pipeline.py` | `VoicePipelineService` — translation, TTS, subtitles, voice learning |
 | `src/whisper_unified/api/app.py` | FastAPI app factory, lifespan (model loading), CORS middleware |
-| `src/whisper_unified/api/routes.py` | 12 API endpoints (OpenAI-compatible STT, diarization, uploads) |
+| `src/whisper_unified/api/routes.py` | 12 STT endpoints (OpenAI-compatible STT, diarization, uploads) |
+| `src/whisper_unified/api/pipeline_routes.py` | 5 Voice Pipeline endpoints (translate, subtitles, TTS, voice learn) |
 
 ### API Endpoints
 
@@ -107,6 +114,11 @@ flowchart TD
 | POST | `/v1/audio/start-transcription` | Process uploaded file |
 | GET | `/v1/audio/uploads/{file_id}` | Get upload info |
 | DELETE | `/v1/audio/uploads/{file_id}` | Delete uploaded file |
+| POST | `/v1/audio/translate` | Audio: STT → translate → TTS |
+| POST | `/v1/video/translate` | Video: extract → STT → translate → TTS → merge |
+| POST | `/v1/subtitles/generate` | Generate SRT subtitles (optionally translated) |
+| POST | `/v1/voice/learn` | Extract voice sample from audio (ffmpeg) |
+| POST | `/v1/voice/synthesize` | TTS from text (JSON body) |
 
 ## Configuration
 
@@ -119,6 +131,10 @@ Key variables:
 - `HUGGINGFACE_TOKEN` — required for PyAnnote gated models
 - `REDIS_URL` — Redis connection string
 - `PORT` — service port (default: 9002)
+- `ENABLE_VOICE_PIPELINE` — enable translation/TTS/subtitles pipeline
+- `OLLAMA_URL` — Ollama server for translation (default: `http://localhost:11434`)
+- `TTS_URL` — TTS server (default: `http://localhost:8000`)
+- `WORKSPACE` — directory for pipeline output files (default: `/workspace`)
 
 ## Important Patterns & Conventions
 

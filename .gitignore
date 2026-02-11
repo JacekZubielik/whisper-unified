@@ -1,6 +1,6 @@
 # Runtime data (created by Docker containers)
 cache/
-models/
+/models/
 redis/
 
 # Python

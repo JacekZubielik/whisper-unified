@@ -46,3 +46,17 @@ class Settings(BaseSettings):
     whisper_default_diarization: bool = True
     whisper_default_model: str = "whisper-multilang"
     whisper_default_format: str = "detailed_json"
+
+    # Voice Pipeline (translation, TTS, video processing)
+    enable_voice_pipeline: bool = True
+    ollama_url: str = "http://localhost:11434"
+    tts_url: str = "http://localhost:8000"
+    tts_engine: str = "piper"
+    tts_voice: str = "alloy"
+    tts_model: str = "tts-1"
+    ollama_model: str = "llama3.2:1b"
+    default_source_lang: str = "auto"
+    default_target_lang: str = "pl"
+    workspace: str = "/workspace"
+    max_concurrent_jobs: int = 2
+    job_timeout: int = 600

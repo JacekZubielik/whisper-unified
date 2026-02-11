@@ -40,6 +40,11 @@ def create_router() -> APIRouter:
         else:
             status["services"]["redis"] = True  # Not required
 
+        if hasattr(request.app.state, "pipeline_service"):
+            ext = await request.app.state.pipeline_service.check_external_services()
+            status["services"]["ollama"] = ext["ollama"]
+            status["services"]["tts"] = ext["tts"]
+
         return status
 
     @router.post("/v1/audio/transcriptions")
@@ -272,25 +277,39 @@ def create_router() -> APIRouter:
     @router.get("/")
     async def root(request: Request) -> dict[str, Any]:
         orchestrator = _get_orchestrator(request)
+        endpoints = {
+            "health": "/health",
+            "transcription": "/v1/audio/transcriptions",
+            "enhanced": "/v1/audio/transcriptions/enhanced",
+            "language_detection": "/v1/audio/language-detection",
+            "speaker_diarization": "/v1/audio/speaker-diarization",
+            "uploads": "/v1/audio/uploads",
+            "manual_transcription": "/v1/audio/start-transcription",
+        }
+
+        if hasattr(request.app.state, "pipeline_service"):
+            endpoints.update(
+                {
+                    "audio_translate": "/v1/audio/translate",
+                    "video_translate": "/v1/video/translate",
+                    "subtitles": "/v1/subtitles/generate",
+                    "voice_learn": "/v1/voice/learn",
+                    "voice_synthesize": "/v1/voice/synthesize",
+                }
+            )
+
         return {
             "service": "Whisper Unified",
             "version": request.app.version,
-            "description": "Embedded STT + Speaker Diarization + Redis Cache",
+            "description": "Embedded STT + Speaker Diarization + Voice Pipeline",
             "features": {
                 "embedded_stt": True,
                 "language_detection": orchestrator.language_detection,
                 "speaker_diarization": orchestrator.speaker_diarization,
                 "caching": orchestrator.enable_caching,
+                "voice_pipeline": hasattr(request.app.state, "pipeline_service"),
             },
-            "endpoints": {
-                "health": "/health",
-                "transcription": "/v1/audio/transcriptions",
-                "enhanced": "/v1/audio/transcriptions/enhanced",
-                "language_detection": "/v1/audio/language-detection",
-                "speaker_diarization": "/v1/audio/speaker-diarization",
-                "uploads": "/v1/audio/uploads",
-                "manual_transcription": "/v1/audio/start-transcription",
-            },
+            "endpoints": endpoints,
         }
 
     return router

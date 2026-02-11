@@ -30,6 +30,7 @@ COPY orchestrator.py .
 
 RUN mkdir -p /tmp/audio && chmod 777 /tmp/audio
 RUN mkdir -p /root/.cache/huggingface && chmod 777 /root/.cache/huggingface
+RUN mkdir -p /workspace/samples && chmod 777 /workspace /workspace/samples
 
 EXPOSE 8000
 

@@ -1,6 +1,6 @@
 # Whisper Unified
 
-Unified Speech-to-Text service combining **faster-whisper** (embedded STT model), **PyAnnote** (speaker diarization), and **Redis** (result caching) into a single GPU-accelerated container. Replaces the previous two-container setup (`whisper` + `whisper-orchestrator`).
+Unified Speech-to-Text service combining **faster-whisper** (embedded STT model), **PyAnnote** (speaker diarization), **Redis** (result caching), and a **Voice Pipeline** (audio/video translation, subtitle generation, TTS) into a single GPU-accelerated container. Replaces the previous multi-container setup (`whisper` + `whisper-orchestrator` + `voice-pipeline`).
 
 ## Features
 
@@ -10,6 +10,7 @@ Unified Speech-to-Text service combining **faster-whisper** (embedded STT model)
 - **Redis Caching** — configurable TTL caching for transcription results
 - **OpenAI-compatible API** — drop-in replacement for `/v1/audio/transcriptions`
 - **File Upload Management** — upload, list, process, and delete audio files
+- **Voice Pipeline** — audio/video translation via Ollama + TTS, subtitle generation, voice cloning
 - **GPU Acceleration** — NVIDIA CUDA 12.4.1 for fast inference
 
 ## Architecture
@@ -19,13 +20,18 @@ flowchart TD
     Client["Client (Claude CLI / MCP / curl)"] -->|REST :9002| API["FastAPI :8000"]
 
     subgraph Container["whisper-unified container"]
-        API --> Routes["api/routes.py<br/>12 REST endpoints"]
+        API --> Routes["api/routes.py<br/>12 STT endpoints"]
+        API --> PRoutes["api/pipeline_routes.py<br/>5 pipeline endpoints"]
         Routes --> Orch["services/orchestrator.py<br/>AudioOrchestrator"]
+        PRoutes --> Pipeline["services/pipeline.py<br/>VoicePipelineService"]
+        Pipeline --> Orch
         Orch --> Whisper["services/whisper.py<br/>EmbeddedWhisperService"]
         Orch --> Diarize["services/diarization.py<br/>IntegratedDiarizationService"]
         Orch --> Cache["Redis Cache"]
     end
 
+    Pipeline -->|httpx| Ollama["Ollama :11434<br/>Translation LLM"]
+    Pipeline -->|httpx| TTS["OpenedAI Speech :8000<br/>TTS Engine"]
     Whisper --> GPU["NVIDIA GPU<br/>CUDA 12.4.1"]
     Diarize --> GPU
     Cache --> Redis["Redis 7 :6380"]
@@ -114,6 +120,11 @@ PDM_IGNORE_ACTIVE_VENV=1 pdm run pre-commit install --hook-type commit-msg
 | POST | `/v1/audio/start-transcription` | Process an uploaded file | form: file_id, language, enable_speaker_diarization |
 | GET | `/v1/audio/uploads/{file_id}` | Get upload info | — |
 | DELETE | `/v1/audio/uploads/{file_id}` | Delete uploaded file | — |
+| POST | `/v1/audio/translate` | Translate audio (STT → LLM → TTS) | multipart: file, source_lang, target_lang |
+| POST | `/v1/video/translate` | Translate video (extract → STT → LLM → TTS → merge) | multipart: file, source_lang, target_lang |
+| POST | `/v1/subtitles/generate` | Generate SRT subtitles | multipart: file, source_lang, target_lang |
+| POST | `/v1/voice/learn` | Extract voice sample from audio | multipart: file, start, end |
+| POST | `/v1/voice/synthesize` | Text-to-speech synthesis | JSON: text, language, voice |
 
 ### Usage Examples
 
@@ -134,6 +145,19 @@ curl -X POST http://localhost:9002/v1/audio/language-detection \
 # Speaker diarization only
 curl -X POST http://localhost:9002/v1/audio/speaker-diarization \
   -F "file=@conversation.wav"
+
+# Translate audio (English → Polish)
+curl -X POST http://localhost:9002/v1/audio/translate \
+  -F "file=@recording.wav" -F "source_lang=en" -F "target_lang=pl"
+
+# Generate subtitles
+curl -X POST http://localhost:9002/v1/subtitles/generate \
+  -F "file=@video.mp4" -F "source_lang=auto"
+
+# Text-to-speech
+curl -X POST http://localhost:9002/v1/voice/synthesize \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Cześć świecie", "language": "pl", "voice": "alloy"}'
 ```
 
 ## Configuration
@@ -162,6 +186,15 @@ cp .env.example .env
 | `WHISPER_AUTO_TRANSCRIPTION` | `false` | Auto-transcribe on upload |
 | `WHISPER_UPLOAD_ONLY_MODE` | `true` | Upload-only mode (manual start) |
 | `WHISPER_DEFAULT_DIARIZATION` | `true` | Enable diarization by default |
+| `ENABLE_VOICE_PIPELINE` | `true` | Enable translation/TTS/subtitles pipeline |
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server for text translation |
+| `OLLAMA_MODEL` | `llama3.2:1b` | LLM model for translation |
+| `TTS_URL` | `http://localhost:8000` | OpenedAI Speech TTS server |
+| `TTS_ENGINE` | `piper` | TTS engine name |
+| `TTS_VOICE` | `alloy` | TTS voice name |
+| `WORKSPACE` | `/workspace` | Output directory for pipeline files |
+| `MAX_CONCURRENT_JOBS` | `2` | Max concurrent pipeline jobs |
+| `JOB_TIMEOUT` | `600` | Pipeline job timeout in seconds |
 
 ## CI/CD Pipeline
 
