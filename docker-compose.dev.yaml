@@ -1,0 +1,15 @@
+---
+# Development overlay — builds locally instead of pulling from GHCR.
+# Usage:
+#   docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up --build
+services:
+  whisper-unified:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    volumes:
+      - ./src:/app/src
+      - ./orchestrator.py:/app/orchestrator.py
+    environment:
+      - LOG_LEVEL=DEBUG

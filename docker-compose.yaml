@@ -18,10 +18,7 @@ services:
       start_period: 30s
 
   whisper-unified:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      network: host
+    image: ghcr.io/jacekzubielik/whisper-unified:latest
     container_name: whisper-unified
     restart: unless-stopped
     network_mode: host
