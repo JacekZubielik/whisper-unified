@@ -4,6 +4,13 @@ name: Release
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - ".github/**"
+      - "*.md"
+      - "PRPs/**"
+      - "config/**"
+      - ".gitignore"
+      - ".pre-commit-config.yaml"
 
 concurrency:
   group: release
