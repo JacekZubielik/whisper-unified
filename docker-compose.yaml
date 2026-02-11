@@ -1,0 +1,49 @@
+---
+# Whisper Unified — Embedded STT + Speaker Diarization + Redis Cache
+# All services use host networking for simplicity
+services:
+  whisper-redis:
+    image: redis:7-alpine
+    container_name: whisper-redis
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./redis:/data
+    command: redis-server --port 6380 --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  whisper-unified:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    container_name: whisper-unified
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - .env
+    volumes:
+      - ./models:/root/.cache/huggingface
+      - /dev/shm:/dev/shm
+    shm_size: "2gb"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    depends_on:
+      whisper-redis:
+        condition: service_healthy
