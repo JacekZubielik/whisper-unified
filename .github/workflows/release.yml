@@ -1,0 +1,137 @@
+---
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install PDM
+        run: pip install pdm
+
+      - name: Install dependencies
+        run: pdm install -G lint --no-self
+
+      - name: Run Ruff (linting)
+        run: pdm run ruff check src/
+
+      - name: Run Black (formatting check)
+        run: pdm run black --check src/ tests/
+
+      - name: Run isort (import sorting check)
+        run: pdm run isort --check-only src/ tests/
+
+      - name: Run mypy (type checking)
+        run: pdm run mypy src/
+
+      - name: Run bandit (security check)
+        run: pdm run bandit -r src/ -c pyproject.toml
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install PDM
+        run: pip install pdm
+
+      - name: Install dependencies
+        run: pdm install -G test --no-self
+
+      - name: Run tests
+        run: pdm run pytest tests/ -v --tb=short
+
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - name: Debug tags
+        run: |
+          echo "Available tags:"
+          git tag -l
+          echo "Current version in pyproject.toml:"
+          grep "^version" pyproject.toml
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install python-semantic-release
+        run: pip install python-semantic-release
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check for skip-ci marker
+        id: skip_check
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if echo "$COMMIT_MSG" | grep -q '\[skip ci\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Semantic Release
+        id: release
+        if: steps.skip_check.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if semantic-release version 2>&1 | tee /tmp/sr-output.txt; then
+            if grep -q "No release will be made" /tmp/sr-output.txt; then
+              echo "released=false" >> "$GITHUB_OUTPUT"
+            else
+              VERSION=$(semantic-release version --print-last-released 2>/dev/null || echo "")
+              if [ -n "$VERSION" ]; then
+                echo "released=true" >> "$GITHUB_OUTPUT"
+                echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+                semantic-release publish
+              else
+                echo "released=false" >> "$GITHUB_OUTPUT"
+              fi
+            fi
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi

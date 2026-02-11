@@ -1,0 +1,149 @@
+---
+name: Retroactive PR Labeling
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: "PR state to process"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - open
+          - closed
+          - merged
+      dry_run:
+        description: "Dry run (log only, no changes)"
+        required: true
+        default: true
+        type: boolean
+      limit:
+        description: "Max PRs to process (0 = all)"
+        required: false
+        default: "0"
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  retroactive-labels:
+    name: Apply labels to existing PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Label all PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_STATE: ${{ inputs.state }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+          INPUT_LIMIT: ${{ inputs.limit }}
+        run: |
+          set -euo pipefail
+
+          # File-path to label mapping (mirrors .github/labeler.yaml)
+          declare -A PATH_LABELS=(
+            [".github/"]="ci"
+            ["Dockerfile"]="docker"
+            ["docker-compose.yaml"]="docker"
+            ["src/whisper_unified/api/"]="api"
+            ["src/whisper_unified/services/whisper.py"]="ml"
+            ["src/whisper_unified/services/diarization.py"]="ml"
+          )
+
+          # Size thresholds
+          size_label() {
+            local changes=$1
+            if [ "$changes" -lt 50 ]; then echo "size/S"
+            elif [ "$changes" -lt 200 ]; then echo "size/M"
+            elif [ "$changes" -lt 800 ]; then echo "size/L"
+            else echo "size/XL"
+            fi
+          }
+
+          # Build gh pr list args
+          LIST_ARGS=("--json" "number,state,mergedAt" "--limit" "500")
+          case "$INPUT_STATE" in
+            open)   LIST_ARGS+=("--state" "open") ;;
+            closed) LIST_ARGS+=("--state" "closed") ;;
+            merged) LIST_ARGS+=("--state" "merged") ;;
+            all)    LIST_ARGS+=("--state" "all") ;;
+          esac
+
+          PR_NUMBERS=$(gh pr list "${LIST_ARGS[@]}" --jq '.[].number')
+
+          if [ -z "$PR_NUMBERS" ]; then
+            echo "No PRs found for state=$INPUT_STATE"
+            exit 0
+          fi
+
+          LIMIT="${INPUT_LIMIT:-0}"
+          COUNT=0
+
+          for PR in $PR_NUMBERS; do
+            if [ "$LIMIT" -gt 0 ] && [ "$COUNT" -ge "$LIMIT" ]; then
+              echo "Reached limit of $LIMIT PRs"
+              break
+            fi
+            COUNT=$((COUNT + 1))
+
+            echo "=== PR #$PR ($COUNT) ==="
+
+            PR_DATA=$(gh pr view "$PR" --json "files,additions,deletions" 2>/dev/null || echo "{}")
+            if [ "$PR_DATA" = "{}" ]; then
+              echo "  Skipping: unable to fetch PR data"
+              continue
+            fi
+
+            FILES=$(echo "$PR_DATA" | jq -r '.files[].path // empty' 2>/dev/null)
+            ADDITIONS=$(echo "$PR_DATA" | jq -r '.additions // 0')
+            DELETIONS=$(echo "$PR_DATA" | jq -r '.deletions // 0')
+            TOTAL_CHANGES=$((ADDITIONS + DELETIONS))
+
+            LABELS_TO_ADD=()
+
+            for FILE in $FILES; do
+              for PATTERN in "${!PATH_LABELS[@]}"; do
+                if [[ "$FILE" == ${PATTERN}* ]]; then
+                  LABEL="${PATH_LABELS[$PATTERN]}"
+                  if [[ ! " ${LABELS_TO_ADD[*]:-} " =~ " ${LABEL} " ]]; then
+                    LABELS_TO_ADD+=("$LABEL")
+                  fi
+                fi
+              done
+
+              if [[ "$FILE" == *.md ]]; then
+                if [[ ! " ${LABELS_TO_ADD[*]:-} " =~ " documentation " ]]; then
+                  LABELS_TO_ADD+=("documentation")
+                fi
+              fi
+            done
+
+            SIZE=$(size_label "$TOTAL_CHANGES")
+            LABELS_TO_ADD+=("$SIZE")
+
+            if [ ${#LABELS_TO_ADD[@]} -eq 0 ]; then
+              echo "  No labels to apply"
+              continue
+            fi
+
+            LABEL_CSV=$(IFS=,; echo "${LABELS_TO_ADD[*]}")
+            echo "  Files: $(echo "$FILES" | wc -l) changed (+$ADDITIONS -$DELETIONS)"
+            echo "  Labels: $LABEL_CSV"
+
+            if [ "$INPUT_DRY_RUN" = "true" ]; then
+              echo "  [DRY RUN] Would apply: $LABEL_CSV"
+            else
+              gh pr edit "$PR" --add-label "$LABEL_CSV" 2>/dev/null && \
+                echo "  Applied: $LABEL_CSV" || \
+                echo "  Warning: failed to apply labels"
+            fi
+          done
+
+          echo ""
+          echo "Done. Processed $COUNT PRs."

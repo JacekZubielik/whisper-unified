@@ -1,0 +1,219 @@
+[project]
+name = "whisper-unified"
+version = "3.0.0"
+description = "Unified STT service: embedded faster-whisper + PyAnnote speaker diarization + Redis cache"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "JacekZubielik", email = "jack.zu@protonmail.com" }]
+
+dependencies = [
+    "fastapi==0.116.1",
+    "uvicorn[standard]==0.35.0",
+    "httpx==0.28.1",
+    "aiofiles==24.1.0",
+    "redis==6.4.0",
+    "langdetect==1.0.9",
+    "structlog==25.4.0",
+    "python-multipart==0.0.20",
+    "pydantic-settings>=2.0.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "torch==2.5.1",
+    "torchaudio==2.5.1",
+    "pyannote.audio==3.3.1",
+    "faster-whisper>=1.1.0",
+    "ctranslate2>=4.0.0",
+    "librosa>=0.10.2",
+    "soundfile>=0.12.1",
+    "numba>=0.59.0",
+    "numpy>=1.24,<2.0",
+]
+
+[project.scripts]
+# whisper-unified = "src.whisper_unified.__main__:main"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+# ============================================================================
+# PDM - Package Manager Configuration
+# ============================================================================
+[tool.pdm]
+distribution = true
+
+[[tool.pdm.source]]
+name = "torch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+include_packages = ["torch", "torchaudio"]
+
+[tool.pdm.dev-dependencies]
+test = [
+    "pytest>=9.0.0",
+    "pytest-asyncio>=1.0.0",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.14.0",
+]
+
+[tool.pdm.build]
+includes = ["src"]
+
+[tool.pdm.scripts]
+start = "python -m src.whisper_unified"
+export-requirements = "pdm export -o requirements.txt --without-hashes --prod -G ml"
+
+[dependency-groups]
+lint = [
+    "black>=26.0.0",
+    "ruff>=0.15.0",
+    "mypy>=1.19.0",
+    "isort>=7.0.0",
+    "bandit>=1.9.0",
+]
+dev = [
+    "pre-commit>=4.0.0",
+    "commitizen>=4.13.0",
+]
+
+# ============================================================================
+# Semantic Release - Automatic versioning and changelog
+# ============================================================================
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+commit_message = "chore(release): {version} [skip ci]"
+build_command = ""
+upload_to_pypi = false
+tag_format = "v{version}"
+major_on_zero = false
+allow_zero_version = true
+
+[tool.semantic_release.changelog]
+changelog_file = "CHANGELOG.md"
+mode = "update"
+exclude_commit_patterns = [
+    "^chore\\(release\\):",
+    "^Merge",
+]
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = ["feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore"]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+
+# ============================================================================
+# Black - Code Formatter
+# ============================================================================
+[tool.black]
+line-length = 100
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.mypy_cache
+    | \.venv
+    | _build
+    | build
+    | dist
+    | __pycache__
+)/
+'''
+
+# ============================================================================
+# Ruff - Fast Python Linter
+# ============================================================================
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+exclude = [".git", ".mypy_cache", ".ruff_cache", ".venv", "__pycache__", "build", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by black)
+    "B008",   # do not perform function calls in argument defaults
+    "B905",   # zip without explicit strict parameter
+    "UP007",  # Use X | Y for union types (requires 3.10+ but we need Optional for compat)
+    "SIM102", # nested ifs often more readable than combined condition
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG001"]  # Unused function argument in tests (fixtures)
+"src/whisper_unified/api/routes.py" = ["ARG001"]  # FastAPI form params (API contract)
+
+# ============================================================================
+# isort - Import Sorting
+# ============================================================================
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["src"]
+skip = [".venv", "build", "dist"]
+
+# ============================================================================
+# MyPy - Static Type Checking
+# ============================================================================
+[tool.mypy]
+python_version = "3.10"
+mypy_path = ["."]
+explicit_package_bases = true
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["tests/", ".venv/", "build/", "dist/"]
+
+# ============================================================================
+# Bandit - Security Linter
+# ============================================================================
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101", "B104", "B108", "B110"]  # assert, bind_all, tmp_dir, try_except_pass
+
+# ============================================================================
+# Pytest - Testing
+# ============================================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+# ============================================================================
+# Coverage - Test Coverage
+# ============================================================================
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", ".venv/*"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

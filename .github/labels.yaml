@@ -1,0 +1,76 @@
+---
+# Area
+- name: ci
+  color: "9ac2f2"
+  description: Changes to CI/CD configuration
+
+- name: documentation
+  color: "F4D1B7"
+  description: Documentation changes
+
+- name: docker
+  color: "2496ED"
+  description: Docker/deployment changes
+
+- name: dependencies
+  color: "0366D6"
+  description: Dependency updates
+
+- name: api
+  color: "006B75"
+  description: API endpoint changes
+
+- name: ml
+  color: "FF6F00"
+  description: ML model/inference changes
+
+# Size
+- name: size/S
+  color: "dc8add"
+  description: "PR changes 0-49 lines"
+
+- name: size/M
+  color: "c061cb"
+  description: "PR changes 50-199 lines"
+
+- name: size/L
+  color: "9141ac"
+  description: "PR changes 200-799 lines"
+
+- name: size/XL
+  color: "813d9c"
+  description: "PR changes 800+ lines"
+
+# Type
+- name: feature
+  color: "009900"
+  description: New feature
+
+- name: fix
+  color: "B60205"
+  description: Bug fix
+
+- name: refactor
+  color: "84b6eb"
+  description: Code refactoring
+
+- name: do-not-merge
+  color: "ee0701"
+  description: PR is not ready to merge
+
+# CI Status
+- name: "lint:ok"
+  color: "0E8A16"
+  description: "CI: linting passed"
+
+- name: "lint:failed"
+  color: "D93F0B"
+  description: "CI: linting failed"
+
+- name: "tests:ok"
+  color: "0E8A16"
+  description: "CI: tests passed"
+
+- name: "tests:failed"
+  color: "D93F0B"
+  description: "CI: tests failed"

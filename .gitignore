@@ -1,0 +1,35 @@
+# Runtime data (created by Docker containers)
+cache/
+models/
+redis/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+.pdm-python
+__pypackages__/
+
+# Testing & linting
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Environment (keep .env.example)
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Distribution / Build
+dist/
+build/
+*.egg-info/
