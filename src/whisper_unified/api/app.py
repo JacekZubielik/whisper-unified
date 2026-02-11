@@ -1,6 +1,7 @@
 """FastAPI application factory."""
 
 from contextlib import asynccontextmanager
+from importlib.metadata import PackageNotFoundError, version
 
 import structlog
 from fastapi import FastAPI
@@ -11,6 +12,11 @@ from src.whisper_unified.config import Settings
 from src.whisper_unified.services.orchestrator import AudioOrchestrator
 
 logger = structlog.get_logger()
+
+try:
+    __version__ = version("whisper-unified")
+except PackageNotFoundError:
+    __version__ = "0.0.0-dev"
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -39,7 +45,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="Whisper Unified",
         description="Embedded STT + Speaker Diarization + Redis Cache",
-        version="3.0.0",
+        version=__version__,
         lifespan=lifespan,
     )
 

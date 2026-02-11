@@ -165,17 +165,32 @@ cp .env.example .env
 
 ## CI/CD Pipeline
 
-The CI pipeline runs on every push and pull request:
+Two GitHub Actions workflows:
 
 ```mermaid
 flowchart LR
-    Lint["Lint<br/>ruff, black, isort,<br/>mypy, bandit"] --> Test["Unit Tests<br/>pytest with mocks<br/>(no GPU needed)"]
-    Test --> Docker["Docker Build<br/>Verify image builds"]
+    subgraph CI["ci.yml — every push & PR"]
+        CL["Lint<br/>ruff, black, isort,<br/>mypy, bandit"] --> CT["Unit Tests<br/>pytest with mocks<br/>(no GPU needed)"]
+        CT --> CD["Docker Build<br/>Verify image builds"]
+    end
+    subgraph Release["release.yml — push to main"]
+        RL["Lint"] --> RT["Tests"]
+        RT --> SR["Semantic Release<br/>version bump + tag"]
+        SR --> GHCR["GHCR Push<br/>semver tags + latest"]
+        GHCR --> RN["Update Release Notes<br/>Docker pull info"]
+    end
 ```
 
+**CI** (`ci.yml`) — runs on every push and pull request:
 - **Lint job**: Python 3.10, checks code quality and security
 - **Test job**: Runs unit tests with mocked ML dependencies (no torch/GPU download)
 - **Docker job**: Builds the Docker image to verify it compiles
+- **PR Labels** (`pr-labels.yml`): auto-labels PRs by size, file paths, and syncs label definitions
+
+**Release** (`release.yml`) — runs on push to `main`, skips non-code changes (`paths-ignore`):
+- Runs lint + tests, then `python-semantic-release` for version bump
+- Publishes Docker image to GHCR with semver tags: `0.2.1`, `0.2`, `0`, `latest`
+- Registry: `ghcr.io/jacekzubielik/whisper-unified`
 
 ## Hardware Requirements
 
