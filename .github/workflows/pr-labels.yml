@@ -1,0 +1,57 @@
+---
+name: PR Labels
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  label-size:
+    name: Label Size
+    runs-on: ubuntu-latest
+    steps:
+      - name: Size label
+        uses: pascalgn/size-label-action@v0.5.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          sizes: >
+            {
+            "0": "S",
+            "50": "M",
+            "200": "L",
+            "800": "XL"
+            }
+
+  labeler:
+    name: Labeler
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Auto-label by file paths
+        uses: actions/labeler@v5
+        with:
+          configuration-path: .github/labeler.yaml
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          sync-labels: true
+
+  label-sync:
+    name: Labels Sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Sync label definitions
+        uses: EndBug/label-sync@v2
+        with:
+          config-file: .github/labels.yaml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          delete-other-labels: false
