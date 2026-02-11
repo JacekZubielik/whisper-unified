@@ -27,7 +27,8 @@ repos:
       - id: mypy
         additional_dependencies:
           - types-PyYAML
-        args: [--ignore-missing-imports]
+        args: [--ignore-missing-imports, src/]
+        pass_filenames: false
         exclude: ^tests/
 
   # Bandit - Security linter

@@ -150,6 +150,7 @@ def _create_test_app(
         "WHISPER_AUTO_TRANSCRIPTION": "true",
         "WHISPER_UPLOAD_ONLY_MODE": "false",
         "WHISPER_REQUIRE_EXPLICIT_START": "false",
+        "ENABLE_VOICE_PIPELINE": "false",
     }
     if env_overrides:
         env.update(env_overrides)
@@ -222,3 +223,30 @@ def client_upload_only(app_upload_only):
     from fastapi.testclient import TestClient
 
     return TestClient(app_upload_only)
+
+
+@pytest.fixture
+def app_with_pipeline(mock_whisper_model, mock_diarization_pipeline, mock_redis, tmp_path):
+    """FastAPI test app with Voice Pipeline enabled."""
+    return _create_test_app(
+        mock_whisper_model,
+        mock_diarization_pipeline,
+        mock_redis,
+        env_overrides={
+            "ENABLE_VOICE_PIPELINE": "true",
+            "WORKSPACE": str(tmp_path / "workspace"),
+            "OLLAMA_URL": "http://localhost:11434",
+            "TTS_URL": "http://localhost:8000",
+            "OLLAMA_MODEL": "test-model",
+            "TTS_MODEL": "tts-1",
+            "JOB_TIMEOUT": "10",
+        },
+    )
+
+
+@pytest.fixture
+def client_with_pipeline(app_with_pipeline):
+    """TestClient with Voice Pipeline enabled."""
+    from fastapi.testclient import TestClient
+
+    return TestClient(app_with_pipeline)

@@ -11,5 +11,6 @@ services:
     volumes:
       - ./src:/app/src
       - ./orchestrator.py:/app/orchestrator.py
+      - ./workspace:/workspace
     environment:
       - LOG_LEVEL=DEBUG

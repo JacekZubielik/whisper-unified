@@ -7,9 +7,11 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.whisper_unified.api.pipeline_routes import create_pipeline_router
 from src.whisper_unified.api.routes import create_router
 from src.whisper_unified.config import Settings
 from src.whisper_unified.services.orchestrator import AudioOrchestrator
+from src.whisper_unified.services.pipeline import VoicePipelineService
 
 logger = structlog.get_logger()
 
@@ -44,7 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(
         title="Whisper Unified",
-        description="Embedded STT + Speaker Diarization + Redis Cache",
+        description="Embedded STT + Speaker Diarization + Voice Pipeline",
         version=__version__,
         lifespan=lifespan,
     )
@@ -59,5 +61,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.state.orchestrator = orchestrator
     app.include_router(create_router())
+
+    if settings.enable_voice_pipeline:
+        pipeline_service = VoicePipelineService(settings, orchestrator)
+        app.state.pipeline_service = pipeline_service
+        app.include_router(create_pipeline_router())
+        logger.info("Voice Pipeline feature enabled")
 
     return app
