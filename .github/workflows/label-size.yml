@@ -1,0 +1,24 @@
+---
+name: Label Size
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  label-size:
+    name: Label Size
+    runs-on: ubuntu-latest
+    steps:
+      - name: Size label
+        uses: pascalgn/size-label-action@v0.5.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          sizes: >
+            {
+            "0": "S",
+            "50": "M",
+            "200": "L",
+            "800": "XL"
+            }

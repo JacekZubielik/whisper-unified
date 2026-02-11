@@ -1,0 +1,25 @@
+---
+name: Labeler
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  labeler:
+    name: Labeler
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Auto-label by file paths
+        uses: actions/labeler@v5
+        with:
+          configuration-path: .github/labeler.yaml
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          sync-labels: true

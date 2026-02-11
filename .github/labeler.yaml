@@ -1,0 +1,37 @@
+---
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ".github/**/*"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: "*.md"
+  - changed-files:
+      - any-glob-to-any-file: "docs/**/*"
+
+docker:
+  - changed-files:
+      - any-glob-to-any-file: "Dockerfile"
+  - changed-files:
+      - any-glob-to-any-file: "docker-compose.yaml"
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file: "pdm.lock"
+  - changed-files:
+      - any-glob-to-any-file: "pyproject.toml"
+  - changed-files:
+      - any-glob-to-any-file: "requirements.txt"
+
+api:
+  - changed-files:
+      - any-glob-to-any-file: "src/whisper_unified/api/**/*"
+
+ml:
+  - changed-files:
+      - any-glob-to-any-file: "src/whisper_unified/services/whisper.py"
+  - changed-files:
+      - any-glob-to-any-file: "src/whisper_unified/services/diarization.py"
+
+feature:
+  - head-branch: ['^feat', 'feat']
