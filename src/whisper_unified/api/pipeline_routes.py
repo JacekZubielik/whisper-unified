@@ -1,5 +1,6 @@
 """FastAPI route handlers for Voice Pipeline feature (translation, TTS, video)."""
 
+import os
 import shutil
 import tempfile
 from pathlib import Path
@@ -22,7 +23,8 @@ def create_pipeline_router() -> APIRouter:
 
     def _save_upload(file: UploadFile) -> str:
         suffix = Path(file.filename or "upload").suffix or ".bin"
-        tmp = tempfile.mktemp(suffix=suffix, dir="/tmp")
+        fd, tmp = tempfile.mkstemp(suffix=suffix, dir="/tmp")  # noqa: S108
+        os.close(fd)
         with open(tmp, "wb") as f:
             shutil.copyfileobj(file.file, f)
         return tmp

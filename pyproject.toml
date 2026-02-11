@@ -188,7 +188,7 @@ exclude = ["tests/", ".venv/", "build/", "dist/"]
 # ============================================================================
 [tool.bandit]
 exclude_dirs = ["tests", ".venv"]
-skips = ["B101", "B104", "B108", "B110"]  # assert, bind_all, tmp_dir, try_except_pass
+skips = ["B101", "B104", "B108", "B110", "B404", "B607"]  # assert, bind_all, tmp_dir, try_except_pass, import_subprocess, partial_path
 
 # ============================================================================
 # Pytest - Testing

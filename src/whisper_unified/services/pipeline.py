@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import subprocess
 import tempfile
 import uuid
@@ -103,7 +104,7 @@ class VoicePipelineService:
     ) -> str:
         """Generate speech from text using OpenedAI Speech TTS."""
         if not output_path:
-            output_path = tempfile.mktemp(suffix=".wav", dir="/tmp")
+            output_path = self._mktemp(".wav")
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
@@ -116,12 +117,21 @@ class VoicePipelineService:
 
         return output_path
 
+    # ---- Helpers ----
+
+    @staticmethod
+    def _mktemp(suffix: str) -> str:
+        """Create a temporary file path (secure mkstemp, returns path only)."""
+        fd, path = tempfile.mkstemp(suffix=suffix, dir="/tmp")  # noqa: S108
+        os.close(fd)
+        return path
+
     # ---- FFmpeg utilities ----
 
     @staticmethod
     def extract_audio_ffmpeg(video_path: str, output_path: str) -> None:
         """Extract audio track from video file (16kHz mono PCM)."""
-        subprocess.run(
+        subprocess.run(  # nosec B603
             [
                 "ffmpeg",
                 "-y",
@@ -146,7 +156,7 @@ class VoicePipelineService:
     ) -> None:
         """Replace or mix audio track in video."""
         if keep_original:
-            subprocess.run(
+            subprocess.run(  # nosec B603
                 [
                     "ffmpeg",
                     "-y",
@@ -169,7 +179,7 @@ class VoicePipelineService:
                 capture_output=True,
             )
         else:
-            subprocess.run(
+            subprocess.run(  # nosec B603
                 [
                     "ffmpeg",
                     "-y",
@@ -248,7 +258,7 @@ class VoicePipelineService:
         logger.info("Job %s: translating video %s → %s", job_id, source_lang, target_lang)
 
         try:
-            audio_tmp = tempfile.mktemp(suffix=".wav", dir="/tmp")
+            audio_tmp = self._mktemp(".wav")
             self.extract_audio_ffmpeg(video_path, audio_tmp)
 
             result = await self._transcribe(audio_tmp, source_lang)
@@ -264,7 +274,7 @@ class VoicePipelineService:
 
             translated = await self.translate_text(transcript, detected_lang, target_lang)
 
-            tts_tmp = tempfile.mktemp(suffix=".wav", dir="/tmp")
+            tts_tmp = self._mktemp(".wav")
             await self.synthesize_speech(translated, voice=tts_voice, output_path=tts_tmp)
 
             output_name = Path(video_path).stem + f"_{target_lang}" + Path(video_path).suffix
@@ -298,7 +308,7 @@ class VoicePipelineService:
         try:
             ext = Path(file_path).suffix.lower()
             if ext in (".mp4", ".mkv", ".avi", ".mov", ".webm"):
-                audio_tmp = tempfile.mktemp(suffix=".wav", dir="/tmp")
+                audio_tmp = self._mktemp(".wav")
                 self.extract_audio_ffmpeg(file_path, audio_tmp)
                 audio_path = audio_tmp
             else:
@@ -360,7 +370,7 @@ class VoicePipelineService:
                 cmd.extend(["-to", end_time])
             cmd.extend(["-vn", "-acodec", "pcm_s16le", "-ar", "22050", "-ac", "1", output_path])
 
-            subprocess.run(cmd, check=True, capture_output=True)
+            subprocess.run(cmd, check=True, capture_output=True)  # nosec B603
 
             return JobResult(
                 job_id=job_id,
