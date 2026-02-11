@@ -2,7 +2,6 @@
 
 import struct
 import sys
-from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -135,7 +134,7 @@ def _create_test_app(
     mock_whisper_model: MagicMock,
     mock_diarization_pipeline: MagicMock,
     mock_redis: AsyncMock,
-    env_overrides: Dict[str, str] = None,
+    env_overrides: dict[str, str] = None,
 ):
     """Helper to create a test FastAPI app with mocked services."""
     env = {
@@ -159,32 +158,34 @@ def _create_test_app(
         with patch("src.whisper_unified.services.whisper.torch") as mock_torch:
             mock_torch.cuda.is_available.return_value = False
 
-            with patch(
-                "src.whisper_unified.services.whisper.WhisperModel",
-                return_value=mock_whisper_model,
+            with (
+                patch(
+                    "src.whisper_unified.services.whisper.WhisperModel",
+                    return_value=mock_whisper_model,
+                ),
+                patch("src.whisper_unified.services.diarization.torch") as mock_dtorch,
             ):
-                with patch("src.whisper_unified.services.diarization.torch") as mock_dtorch:
-                    mock_dtorch.cuda.is_available.return_value = False
+                mock_dtorch.cuda.is_available.return_value = False
 
-                    with patch(
-                        "src.whisper_unified.services.diarization.Pipeline"
-                    ) as mock_pipeline_cls:
-                        mock_pipeline_cls.from_pretrained.return_value = mock_diarization_pipeline
+                with patch(
+                    "src.whisper_unified.services.diarization.Pipeline"
+                ) as mock_pipeline_cls:
+                    mock_pipeline_cls.from_pretrained.return_value = mock_diarization_pipeline
 
-                        from src.whisper_unified.api.app import create_app
-                        from src.whisper_unified.config import Settings
+                    from src.whisper_unified.api.app import create_app
+                    from src.whisper_unified.config import Settings
 
-                        settings = Settings(_env_file=None)
-                        app = create_app(settings)
+                    settings = Settings(_env_file=None)
+                    app = create_app(settings)
 
-                        # Pre-load mocked services — bypass lifespan which
-                        # only runs inside a TestClient context manager.
-                        orch = app.state.orchestrator
-                        orch.whisper_service.model = mock_whisper_model
-                        orch.diarization_service.pipeline = mock_diarization_pipeline
-                        orch.diarization_service.device = "cpu"
+                    # Pre-load mocked services — bypass lifespan which
+                    # only runs inside a TestClient context manager.
+                    orch = app.state.orchestrator
+                    orch.whisper_service.model = mock_whisper_model
+                    orch.diarization_service.pipeline = mock_diarization_pipeline
+                    orch.diarization_service.device = "cpu"
 
-                        return app
+                    return app
 
 
 @pytest.fixture

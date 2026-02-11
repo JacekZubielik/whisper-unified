@@ -1,7 +1,5 @@
 """Tests for API routes."""
 
-import pytest
-
 
 class TestHealthEndpoint:
     def test_health_returns_200(self, client):
@@ -30,7 +28,7 @@ class TestRootEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["service"] == "Whisper Unified"
-        assert data["version"] == "3.0.0"
+        assert "version" in data
         assert "endpoints" in data
 
     def test_root_features(self, client):

@@ -76,4 +76,3 @@ jobs:
         run: |
           docker run --rm whisper-unified:pr-test \
             python3 -c "from src.whisper_unified import __version__; print(f'OK: v{__version__}')"
-

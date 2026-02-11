@@ -262,7 +262,7 @@ def create_router() -> APIRouter:
             ],
             "service_info": {
                 "service": "Whisper Unified",
-                "version": "3.0.0",
+                "version": request.app.version,
                 "api_compatibility": "OpenAI v1",
                 "embedded_stt": True,
                 "whisper_model": orchestrator.whisper_service.model_name,
@@ -274,7 +274,7 @@ def create_router() -> APIRouter:
         orchestrator = _get_orchestrator(request)
         return {
             "service": "Whisper Unified",
-            "version": "3.0.0",
+            "version": request.app.version,
             "description": "Embedded STT + Speaker Diarization + Redis Cache",
             "features": {
                 "embedded_stt": True,
